@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Papi Admin Offline</title>
+    <style>
+        :root { --blue: #4da6ff; --green: #28a745; --bg: #000; }
+        body { background: var(--bg); color: #fff; font-family: -apple-system, sans-serif; margin: 0; padding: 15px; padding-top: env(safe-area-inset-top); }
+        
+        .header { position: sticky; top: 0; background: var(--bg); padding-bottom: 10px; z-index: 10; }
+        
+        #search { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #333;
+            background: #1a1a1a; color: #fff; font-size: 16px; margin-bottom: 10px; box-sizing: border-box;
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 13px; color: white; }
+        
+        .edit-btn { background: var(--blue); }
+        .save-btn { background: var(--green); display: none; }
+        .copy-btn { background: #333; }
+
+        #content { line-height: 1.6; font-size: 15px; padding-bottom: 50px; }
+        .email-block { color: var(--blue); font-weight: bold; margin-top: 18px; display: block; border-bottom: 1px solid #222; }
+        .prof { padding-left: 10px; color: #ccc; border-left: 1px solid #333; margin-left: 5px; }
+
+        #editor { 
+            width: 100%; height: 70vh; background: #111; color: #fff; 
+            border: 1px solid var(--blue); border-radius: 8px; padding: 10px; 
+            display: none; font-family: monospace; font-size: 14px; box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <input id="search" type="text" placeholder="🔍 Chercher TV, Nom, Email..." autocomplete="off">
+    <div class="btn-group">
+        <button id="btnEdit" class="edit-btn" onclick="startEdit()">📝 MODIFIER</button>
+        <button id="btnSave" class="save-btn" onclick="saveData()">✅ ENREGISTRER</button>
+        <button id="btnCopy" class="copy-btn" onclick="copyToClipboard()">📋 COPIER TOUT</button>
+    </div>
+</div>
+
+<div id="content"></div>
+<textarea id="editor"></textarea>
+
+<script>
+// --- LOGIQUE DE DONNÉES ---
+const initialData = `Compte\namflixen@gmail.com\nProfil 1 ———-»2( diam sall)`;
+let currentData = localStorage.getItem('papi_db') || initialData;
+
+function render(filter = "") {
+    const keyword = filter.toLowerCase().trim();
+    const lines = currentData.split('\n');
+    let html = "";
+    let block = { email: "", items: [] };
+    let allBlocks = [];
+
+    lines.forEach(line => {
+        if (line.includes('@')) {
+            if (block.email) allBlocks.push({...block});
+            block = { email: line, items: [] };
+        } else if (line.trim() && !line.startsWith('Compte')) {
+            block.items.push(line);
+        }
+    });
+    allBlocks.push(block);
+
+    allBlocks.forEach(b => {
+        const matchEmail = b.email.toLowerCase().includes(keyword);
+        const matchProf = b.items.filter(i => i.toLowerCase().includes(keyword));
+
+        if (!keyword || matchEmail || matchProf.length > 0) {
+            html += `<span class="email-block">${b.email}</span>`;
+            const toShow = (matchEmail || !keyword) ? b.items : matchProf;
+            toShow.forEach(text => html += `<div class="prof">${text}</div>`);
+        }
+    });
+    document.getElementById('content').innerHTML = html || "Aucun résultat";
+}
+
+// --- FONCTIONS ACTIONS ---
+function startEdit() {
+    document.getElementById('content').style.display = 'none';
+    const ed = document.getElementById('editor');
+    ed.style.display = 'block';
+    ed.value = currentData;
+    document.getElementById('btnEdit').style.display = 'none';
+    document.getElementById('btnSave').style.display = 'block';
+}
+
+function saveData() {
+    currentData = document.getElementById('editor').value;
+    localStorage.setItem('papi_db', currentData);
+    document.getElementById('editor').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('btnEdit').style.display = 'block';
+    document.getElementById('btnSave').style.display = 'none';
+    render();
+}
+
+function copyToClipboard() {
+    navigator.clipboard.writeText(currentData).then(() => alert("Copié !"));
+}
+
+// --- RECHERCHE ---
+document.getElementById('search').addEventListener('input', (e) => render(e.target.value));
+
+// --- SERVICE WORKER (POUR LE MODE HORS-LIGNE) ---
+if ('serviceWorker' in navigator) {
+    const swCode = `
+        const CACHE_NAME = 'papi-v1';
+        self.addEventListener('install', e => {
+            e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['./'])));
+        });
+        self.addEventListener('fetch', e => {
+            e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+        });
+    `;
+    const blob = new Blob([swCode], {type: 'text/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl);
+}
+
+render();
+</script>
+
+</body>
+</html>
