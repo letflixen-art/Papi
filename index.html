@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papi Admin - Gestion</title>
+    <style>
+        :root {
+            --primary: #4da6ff;
+            --bg: #000;
+            --surface: #1a1a1a;
+            --text: #fff;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+        }
+
+        /* Barre de recherche et Boutons */
+        .header-controls {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding-bottom: 15px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #search {
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            background: #222;
+            color: #fff;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-edit { background: var(--primary); color: white; }
+        .btn-save { background: #28a745; color: white; display: none; }
+        .btn-cancel { background: #dc3545; color: white; display: none; }
+
+        #counter {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        /* Zone de contenu */
+        #content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 16px;
+            padding-bottom: 100px;
+        }
+
+        #editor {
+            width: 100%;
+            height: 70vh;
+            background: #111;
+            color: #fff;
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            display: none;
+            box-sizing: border-box;
+        }
+
+        .email-line { color: var(--primary); font-weight: bold; margin-top: 15px; display: block; }
+        .profile-line { padding-left: 15px; border-left: 1px solid #333; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="header-controls">
+    <input id="search" type="text" placeholder="🔍 Rechercher (TV, Nom, Email...)">
+    
+    <div class="btn-group">
+        <button id="btnEdit" class="btn-edit" onclick="startEdit()">📝 Modifier les données</button>
+        <button id="btnSave" class="btn-save" onclick="saveData()">✅ Enregistrer</button>
+        <button id="btnCancel" class="btn-cancel" onclick="cancelEdit()">❌ Annuler</button>
+    </div>
+    <div id="counter"></div>
+</div>
+
+<div id="content"></div>
+<textarea id="editor"></textarea>
+
+<script>
+// Tes données par défaut (utilisées seulement au premier chargement)
+const defaultData = `Compte
+
+‎amflixen@gmail.com 
+‎Profil 1 ———-»2( diam sall)
+‎Profil 2 ———-»1(7 fevrier)
+‎Profil 3 ———-»2(29 fevrier)
+‎Profil 4 ———-»1(29 janvier)
+‎Profil 5 ———-»2(16 fevrier )
+‎
+‎backexpreli@gmail.com TV
+‎Profil 1 ———-»2(7 et 16 fevrier )
+‎Profil 2 ———-»1(12 fevrier)
+‎Profil 3 ———-»1(11 fevrier )
+‎Profil 4 ———-» 2(10 et 8 fevrier)
+‎Profil 5 ———-»2(25 fevrier )
+‎
+‎backmediaflix@gmail.com TV
+‎Profil 1 ———-»2(29 janvier et fevrier )
+‎Profil 2 ———-»2(29 janvier et 8 fevrier)
+‎Profil 3 ———-»1(7 fevrier )
+‎Profil 4 ———-»1 (10 fevrier )
+‎Profil 5 ———-»2(20 fevrier )
+‎
+‎barflixen@gmail.com TV
+‎Profil 1 ———-»1(4  mars )
+‎Profil 2 ———-»2(8 octobre 2026 et 8 janvier 2027)
+‎Profil 3 ———-»1(6  fevrier )
+‎Profil 4 ———-»2(3 fevrier et 7 mars)
+‎Profil 5 ———-»1(30 janvier )
+‎
+‎betflixen@gmail.com TV
+‎Profil 1 ———-»2(6 fevrier)
+‎Profil 2 ———-»1(2 fevrier )
+‎Profil 3 ———-»2(25 fevrier)
+‎Profil 4 ———-»2(18 fevrier)
+‎Profil 5 ———-» 1(7 fevrier)
+‎
+‎beshaflixen@gmail.com TV
+‎Profil 1 ———-»2(23 et 30 janvier)
+‎Profil 2 ———-»2(11 fevrier)
+‎Profil 3 ———-»2(23 fevrier )
+‎Profil 4 ———-»1(25 fevrier)
+‎Profil 5 ———-»1(10 fevrier)
+‎
+‎campusflixen@gmail.com TV
+‎Profil 1 ———-»2(26 fevrier)
+‎Profil 2 ———-»2(15 fevrier)
+‎Profil 3 ———-»2(17 fevrier)
+‎Profil 4 ———-»1(13 mai 2026)
+‎Profil 5 ———-»1(24 fevrier)
+‎
+‎comeflixen@gmail.com  TV
+‎Profil 1 ———-» 1(13 decembre 2026)
+‎Profil 2 ———-»1(23 avril )
+‎Profil 3 ———-»2(12 fevrier et avril)
+‎Profil 4 ———-»2(26 fevrier)
+‎Profil 5 ———-»2(9 et 20 fevrier)
+‎ ‎
+Diaflixcome@gmail.com TV
+‎Profil 1 ———-»2(2 fevrier)
+‎Profil 2 ———-»2(2 mars)
+‎Profil 3 ———-»1(2 fevrier)
+‎Profil 4 ———-»1(2 fevrier)
+‎Profil 5 ———-»1(2 fevrier)
+‎
+‎doneflixen@gmail.com TV
+‎Profil 1 ———-»2(26 janvier)
+‎Profil 2 ———-» 1(7 avril ) tina
+‎Profil 3 ———-»2(8 et 14 mars)
+‎Profil 4 ———-»2(10 juillet et 4 mars)
+‎Profil 5 ———-»1(6avril )
+‎
+‎douflixen@gmail.com TV
+‎Profil 1 ———-»1(21 fevrier)
+‎Profil 2 ———-»2(27 fevrier)
+‎Profil 3 ———-»2( 4 mars)
+‎Profil 4 ———-»1(13 mars)
+‎Profil 5 ———-»2(9 fevrier )
+‎
+‎fasenflix@gmail.com TV
+‎Profil 1 ———-»1(17 mars)
+‎Profil 2 ———-»1(22 mars)
+‎Profil 3 ———-»2(22 fevrier et mars)
+‎Profil 4 ———-»3(20 fevrier et 15 fevrier)
+‎Profil 5 ———-»1(20 fevrier)
+‎
+‎chanflixen@gmail.com TV
+‎Profil 1 ———-»1(8 fevrier)
+‎Profil 2 ———-»1(7 novembre 2026)
+‎Profil 3 ———-»2(24 fevrier et 1 mars)
+‎Profil 4 ———-»2(8  fevrier)
+‎Profil 5 ———-»2(21 fevrier )
+‎
+‎halflixen@gmail.com TV
+‎Profil 1 ———-»2(19 et 23 fevrier)
+‎Profil 2 ———-»2(30 janvier et fevrier )
+‎Profil 3 ———-»1(6 fevrier )
+‎Profil 4 ———-»2(27 janvier et 4 fevrier)
+‎Profil 5 ———-»1( 6 fevrier )
+‎
+‎kickflixen@gmail.com TV
+‎Profil 1 ———-»1
+‎Profil 2 ———-»1(14 août 2026)
+‎Profil 3 ———-»2(11 fevrier)
+‎Profil 4 ———-»2(16 et 22 fevrier)
+‎Profil 5 ———-»2(31 janvier)
+‎
+‎lakflixen@gmail.com TV
+‎Profil 1 ———-»1(8 juin)
+‎Profil 2 ———-»2(16 fevrier)
+‎Profil 3 ———-»2(6 fevrier)
+‎Profil 4 ———-»1(8 fevrier ) 
+‎Profil 5 ———-2(6 fevrier et 24 avril )
+‎
+‎laahflixen@gmail.com TV
+‎Profil 1 ———-»2(3 fevrier)
+‎Profil 2 ———-»1(13 mars)
+‎Profil 3 ———-»1(14 fevrier et 1 mars)
+‎Profil 4 ———-»2(29 janvier)
+‎Profil 5 ———-»2(21 fevrier et 27 mars ) 
+‎
+‎lixtenkiks@gmail.com TV
+‎Profil 1 ———-»2(13 mars et 29 février )
+‎Profil 2 ———-»1(12 avril )
+‎Profil 3 ———-»1 (4 juin)
+‎Profil 4 ———-»1(10 janvier 2027)
+‎Profil 5 ———-»3(10 fevrier )
+‎
+‎loanflixen@gmail.com TV
+‎Profil 1 ———-»1(13 avril)
+‎Profil 2———-»2(25 fevrier)
+‎Profil 3 ———-»2(1 fevrier )
+‎Profil 4 ———-»2(23 fevrier )
+‎Profil 5 ———-»1( 9 fevrier)
+‎
+‎miflixen@gmail.com TV
+‎Profil 1 ———-»2(3 fevrier )
+‎Profil 2 ———-»2(12 mars)
+‎Profil 3 ———-»2( 6 mars)
+‎Profil 4 ———-»1(29 fevrier)
+‎Profil 5 ———-» mariame
+‎
+‎
+‎monflixen@gmail.com TV
+‎Profil 1 ———-»1(21 janvier) en attente 
+‎Profil 2 ———-»1(11 mai  )
+‎Profil 3 ———-»2(1 mars )
+‎Profil 4 ———-»1( 13 fevrier )
+‎Profil 5 ———-»2(28 janvier)
+
+‎mokflixen@gmail.com TV
+‎Profil 1 ———-»1(28 fevrier)
+‎Profil 2 ———-»2(28 fevrier )
+‎Profil 3 ———-»2(28 fevrier )
+‎Profil 4 ———-»1(28 avril)
+‎Profil 5 ———-»2(28 mars)
+
+‎
+‎myflixen@gmail.com 
+‎Profil 1 ———-»2(23 et 28 fevrier )
+‎Profil 2 ———-»1(( 3 fevrier)
+‎Profil 3———-»2(5 mars)
+‎Profil 4 ———-»2( 4  et 12 fevrier)
+‎Profil 5 ———-»1(6 mars )
+‎
+‎nasenflix@gmail.com Tv
+‎Profil 1 ———-»1(help)
+‎Profil 2 ———-»2(22 fevrier )
+‎Profil 3 ———-»2(24 fevrier)
+‎Profil 4 ———-»2(26 janvier)
+‎Profil 5 ———-»1(27 fevrier)
+‎
+‎noitflixen@gmail.comTV
+‎Profil 1 ———-»1( 27janvier )
+‎Profil 2 ———-»1(16 mars)
+‎Profil 3 ———-»2(16 fevrier )
+‎Profil 4 ———-»2(23 fevrier )
+‎Profil 5 ———-»2(16 fevrier)
+‎
+‎notflixen@gmail.comTV
+‎Profil 1 ———-»2(11 fevrier)
+‎Profil 2 ———-»2(21 mars)
+‎Profil 3 ———-»1(10 mars)
+‎Profil 4 ———-»2(8 fevrier et mars)
+‎Profil 5 ———-»1(12 fevrier )
+‎
+‎phisisflix@amail.com TV
+‎Profil 1 ———-» 2(15 et 22 fevrier )
+‎Profil 2 ———-»2(7 fevrier)
+‎Profil 3 ———-»1(1 fevrier )
+‎Profil 4 ———-»1(20 mars)
+‎Profil 5 ———-»2(2 fevrier)
+‎
+‎rainyflix221@gmail.comTV
+‎Profil 1 ———-»2(1 fevrier et mars)
+‎Profil 2 ———-»1(12 decembre 2026)
+‎Profil 3 ———-»1(7 mars )
+‎Profil 4 ———-»2(12 fevrier)
+‎Profil 5 ———-»2(15 fevrier et 9 mars)
+‎
+‎ralflixen@gmail.com  TV
+‎Profil 1 ———-»2(19 fevrier)
+‎Profil 2 ———-»
+‎Profil 3 ———-»2(22 mars et fevrier)
+‎Profil 4 ———-»2(3 fevrier)
+‎Profil 5 ———-» 2(8 fevrier)
+‎
+‎
+‎sahflixen@gmail.com TV
+‎Profil 1 ———-»2(11 fevrier)
+‎Profil 2 ———-»2(2 fevrier )
+‎Profil 3 ———-»1(6 août )
+‎Profil 4 ———-»2( 23 fevrier )
+‎Profil 5 ———-»1( 10  fevrier)
+‎
+‎
+‎senmediavip@gmail.com TV
+‎Profil 1 ———-»1(15 avril)
+‎Profil 2 ———-»2(2 mars)
+‎Profil 3 ———-»2(16 fevrier)
+‎Profil 4 ———-»1(7 fevrier)
+‎Profil 5 ———-»2(26 janvier)
+‎
+‎shameflixen@gmail.com TV
+‎Profil 1 ———-»2(6 fevrier )
+‎Profil 2 ———-»1(6 fevrier)
+‎Profil 3 ———-»1(6 juin)
+‎Profil 4 ———-»2(27 fevrier)
+‎Profil 5 ———-»2(25 janvier)
+‎
+‎tomflixen@gmail.com TV
+‎Profil 1 ———-»2(29 janvier)
+‎Profil 2 ———-»2(28 janvier )
+‎Profil 3 ———-»2(6  fevrier )
+‎Profil 4 ———-»1(2 mars)
+‎Profil 5 ———-»1(7 fevrier )
+‎
+‎trustflixen@gmail.com TV
+‎Profil 1 ———-»2(5 mars)
+‎Profil 2 ———-»1(22 avril )
+‎Profil 3 ———-»1(2 fevrier)
+‎Profil 4 ———-»2(23 fevrier)
+‎Profil 5 ———-»2(16 fevrier et 17 mars)
+‎
+‎tutodieng@gmail.com TV
+‎Profil 1 ———-»1(14 mars)
+‎Profil 2 ———-»1(29 janvier)
+‎Profil 3 ———-»2(29 janvier et mars)
+‎Profil 4 ———-»2(17 fevrier et 1 mars)
+‎Profil 5 ———-»1(27 janvier )
+‎
+‎wenflixen@gmail.com
+‎Profil 1 ———-»1(26 avril)
+‎Profil 2 ———-»2(23 fevrier)
+‎Profil 3 ———-»2(27 janvier )
+‎Profil 4 ———-»1(24 fevrier )
+‎Profil 5 ———-»2(6 et 15 fevrier )
+‎
+‎yusflixen@gmail.com TV
+‎Profil 1 ———-»2(6 fevrier)
+‎Profil 2 ———-»2(6 fevrier )
+‎Profil 3 ———-»1(16 août 2026)
+‎Profil 4 ———-»1(25 fevrier )
+‎Profil 5 ———-»1(27 avri)
+‎
+‎Pulflixen@gmail.com Tv
+‎Profil 1 ———-»2(22 fevrier)
+‎Profil 2 ———-»1(26 fevrier)
+‎Profil 3 ———-»2(17 fevrier et 22 mars )
+‎Profil 4 ———-»1(2 mars )
+‎Profil 5 ———-»2(26 janvier)
+‎
+‎sainflixen@gmail.com TV
+‎
+‎Profil 1 ———-»2(1 et 9 fevrier)
+‎Profil 2 ———-»1(17 février)
+‎Profil 3 ———-»1(4 fevrier)
+‎Profil 4 ———-»2(20 fevrier)
+‎Profil 5 ———-»2(6 fevrier)
+‎
+‎papidemirm10@gmail.com‎TV
+‎Profil 1 ———-»2(7 fevrier)
+‎Profil 2 ———-»1(7 fevrier )
+‎Profil 3 ———-»2(16 fevrier et mars)
+‎Profil 4 ———-»1(13 fevrier)
+‎Profil 5 ———-»2(25 janvier )
+‎
+‎hansiflix221@gmail.com 
+‎
+‎Profil 1 ———-»1( 6 mars )
+‎Profil 2 ———-»1(16 fevrier)
+‎Profil 3 ———-»2(26 janvier)
+‎Profil 4 ———-»2(27 fevrier)
+‎Profil 5 ———-»2(1 fevrier)
+‎
+‎surflixen@gmail.com TV
+‎
+‎Profil 1 ———-»1(26 mars)
+‎Profil 2 ———-»2(19 fevrier )
+‎Profil 3 ———-»2(11 et 24fevrier)
+‎Profil 4 ———-»2(10 mars)
+‎Profil 5 ———-»1(11 mars)
+‎
+‎pasflixen@gmail.com
+‎
+‎Profil 1 ———-»2(16 mars et avril )
+‎Profil 2 ———-»2(11 fevrier)
+‎Profil 3 ———-»1(23 fevrier )
+‎Profil 4 ———-»1(27 fevrier)
+‎Profil 5 ———-»2(20 avril et mars)
+‎‎
+letflixen@gmail.com TV
+
+Profil 1 ———-»1(26 janvier)
+‎Profil 2 ———-»1(22 mars)
+‎Profil 3 ———-»2(25 fevrier )
+‎Profil 4 ———-»2(14 fevrier )
+‎Profil 5 ———-»2(10 et 16 fevrier)`;
+
+// Éléments DOM
+const contentDiv = document.getElementById('content');
+const editor = document.getElementById('editor');
+const searchInput = document.getElementById('search');
+const btnEdit = document.getElementById('btnEdit');
+const btnSave = document.getElementById('btnSave');
+const btnCancel = document.getElementById('btnCancel');
+
+// Charger les données (depuis le stockage local ou défaut)
+let currentData = localStorage.getItem('papiData') || defaultData;
+
+function displayData(filter = "") {
+    const blocks = parseBlocks(currentData);
+    const keyword = filter.toLowerCase().trim();
+    
+    let html = "";
+    let count = 0;
+
+    blocks.forEach(block => {
+        const emailMatch = block.email.toLowerCase().includes(keyword);
+        const matchingProfiles = block.profiles.filter(p => p.toLowerCase().includes(keyword));
+
+        if (keyword === "" || emailMatch || matchingProfiles.length > 0) {
+            html += `<span class="email-line">${block.email}</span>`;
+            
+            if (emailMatch || keyword === "") {
+                block.profiles.forEach(p => {
+                    html += `<div class="profile-line">${p}</div>`;
+                });
+                if(keyword !== "") count++;
+            } else {
+                matchingProfiles.forEach(p => {
+                    html += `<div class="profile-line">${p}</div>`;
+                    count++;
+                });
+            }
+        }
+    });
+
+    contentDiv.innerHTML = html || "Aucun résultat";
+    document.getElementById('counter').innerText = count > 0 ? `${count} résultat(s)` : "";
+}
+
+function parseBlocks(text) {
+    const lines = text.split("\n");
+    let blocks = [];
+    let currentBlock = null;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed === "" || trimmed === "Compte") return;
+
+        if (trimmed.includes("@") && !trimmed.toLowerCase().includes("profil")) {
+            if (currentBlock) blocks.push(currentBlock);
+            currentBlock = { email: trimmed, profiles: [] };
+        } else if (currentBlock) {
+            currentBlock.profiles.push(trimmed);
+        }
+    });
+    if (currentBlock) blocks.push(currentBlock);
+    return blocks;
+}
+
+// Fonctions d'édition
+function startEdit() {
+    contentDiv.style.display = 'none';
+    editor.style.display = 'block';
+    editor.value = currentData;
+    btnEdit.style.display = 'none';
+    btnSave.style.display = 'block';
+    btnCancel.style.display = 'block';
+    searchInput.style.visibility = 'hidden';
+}
+
+function saveData() {
+    currentData = editor.value;
+    localStorage.setItem('papiData', currentData);
+    cancelEdit();
+}
+
+function cancelEdit() {
+    contentDiv.style.display = 'block';
+    editor.style.display = 'none';
+    btnEdit.style.display = 'block';
+    btnSave.style.display = 'none';
+    btnCancel.style.display = 'none';
+    searchInput.style.visibility = 'visible';
+    displayData();
+}
+
+// Recherche
+searchInput.addEventListener('input', (e) => displayData(e.target.value));
+
+// Initialisation
+displayData();
+</script>
+
+</body>
+</html>
